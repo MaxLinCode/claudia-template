@@ -9,6 +9,13 @@ HABITS_DIR = "habits"
 DASHBOARD_FILE = os.path.join(HABITS_DIR, "dashboard.md")
 DASHBOARD_HTML_FILE = os.path.join(HABITS_DIR, "dashboard.html")
 
+HABIT_EMOJIS = {
+    "journal": "📝",
+    "stretch-rehab": "🧘",
+    "leetcode": "💻",
+    "job-search": "💼",
+}
+
 
 def parse_tracker_rows(tracker_path):
     if not os.path.exists(tracker_path):
@@ -116,9 +123,12 @@ def build_habit_rows(habits):
 
     for habit in sorted(habits):
         stats = get_habit_status(os.path.join(HABITS_DIR, habit))
+        habit_name = habit.replace("-", " ").title()
+        emoji = HABIT_EMOJIS.get(habit, "📌")
         rows.append(
             {
-                "name": habit.replace("-", " ").title(),
+                "name": habit_name,
+                "display_name": f"{emoji} {habit_name}",
                 "slug": habit,
                 "streak": stats["streak"],
                 "last_date": stats["last_date"],
@@ -146,7 +156,7 @@ def generate_dashboard_html(system_streak, last_sync, habit_rows):
     for row in habit_rows:
         streak_display = f"🔥 {row['streak']}" if row["streak"] > 3 else str(row["streak"])
         status_class = "status-done" if "✅" in row["status"] else "status-paused" if "⏸️" in row["status"] else "status-missed" if "❌" in row["status"] else "status-new"
-        safe_name = html.escape(row["name"])
+        safe_name = html.escape(row["display_name"])
         safe_last_date = html.escape(row["last_date"])
         safe_status = html.escape(row["status"])
         activity_note = "Completed today" if row["last_date"] == today_str and "✅" in row["status"] else "Updated today" if row["last_date"] == today_str else "No update today"
@@ -209,7 +219,7 @@ def generate_dashboard_html(system_streak, last_sync, habit_rows):
     wins_markup = (
         "<ul class=\"wins-list\">"
         + "".join(
-            f"<li><strong>{html.escape(row['name'])}</strong><span class=\"status-pill status-done\">✅ Today</span></li>"
+            f"<li><strong>{html.escape(row['display_name'])}</strong><span class=\"status-pill status-done\">✅ Today</span></li>"
             for row in recent_wins
         )
         + "</ul>"
@@ -776,7 +786,7 @@ def generate_dashboard():
     for row in habit_rows:
         streak_display = f"🔥 {row['streak']}" if row["streak"] > 3 else str(row["streak"])
         row = (
-            f"| **{row['name']}** | {streak_display} | "
+            f"| **{row['display_name']}** | {streak_display} | "
             f"{row['last_date']} | {row['status']} |"
         )
         dashboard_content.append(row)
