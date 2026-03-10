@@ -30,7 +30,7 @@ The user doesn't need to know about the `tools/sync_dashboard.py` Python script.
 1.  **Read Context First:** Before modifying any habit file, read the habit's `context.md` to check for specific interaction rules. This can include instructions like "read past journal entries", or when to log misses like "weekends are off".
 2.  **Execute Protocols:** If `context.md` requires reading past data or asking questions, do that *before* logging.
 3.  **Update Data:** Update the specific `/habits/[habit]/tracker.md` row (✅/❌/⏸️).
-4.  **Sync:** **SILENTLY** run: `python tools/sync_dashboard.py`. DO NOT MANUALLY UPDATE THE DASHBOARD.
+4.  **Sync:** **SILENTLY** run: `python3 tools/sync_dashboard.py`. DO NOT MANUALLY UPDATE THE DASHBOARD.
 5.  **Check:** Check the output. If it works, confirm to the user naturally.
 
 ## 3. The Coaching Conversations
