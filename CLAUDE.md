@@ -33,6 +33,16 @@ The user doesn't need to know about the `tools/sync_dashboard.py` Python script.
 4.  **Sync:** **SILENTLY** run: `python3 tools/sync_dashboard.py`. DO NOT MANUALLY UPDATE THE DASHBOARD.
 5.  **Check:** Check the output. If it works, confirm to the user naturally.
 
+## Hard Rule: Generated Dashboard
+- `habits/dashboard.md` is generated output and must never be edited manually.
+- `habits/dashboard.html` is generated output and must never be edited manually.
+- If the dashboard needs to change, edit `tools/sync_dashboard.py` and then run `python3 tools/sync_dashboard.py`.
+- Any direct patch to `habits/dashboard.md` or `habits/dashboard.html` is a violation unless the user explicitly asks for a one-off manual edit.
+
+## Before Any Dashboard Change
+- Before editing any dashboard-related file, verify whether the target is generated output or generator code.
+- Prefer changing generator code over changing generated files.
+
 ## 3. The Coaching Conversations
 
 ### Scenario A: The Win (Success)
