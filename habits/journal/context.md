@@ -1,4 +1,4 @@
-# Habit Context: Daily Journal
+# Habit Context: Journal
 
 ## Why
 To spend time more intentionally, track progress, and record daily notes. To give an overall "fulfillment score" out of 5.
