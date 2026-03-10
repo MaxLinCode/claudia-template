@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 
-import os
 import datetime
-import html
+import os
+
+try:
+    from dashboard_renderer import render_dashboard_html
+except ModuleNotFoundError:
+    from tools.dashboard_renderer import render_dashboard_html
 
 # Configuration
 HABITS_DIR = "habits"
@@ -22,8 +26,8 @@ def parse_tracker_rows(tracker_path):
         return []
 
     rows = []
-    with open(tracker_path, "r", encoding="utf-8") as f:
-        for line in f:
+    with open(tracker_path, "r", encoding="utf-8") as file_obj:
+        for line in file_obj:
             stripped = line.strip()
             if not stripped.startswith("|"):
                 continue
@@ -120,9 +124,28 @@ def calculate_system_streak(habits):
 
 def build_habit_rows(habits):
     rows = []
+    today = datetime.date.today()
+    week_dates = [today - datetime.timedelta(days=offset) for offset in range(6, -1, -1)]
 
     for habit in sorted(habits):
-        stats = get_habit_status(os.path.join(HABITS_DIR, habit))
+        habit_path = os.path.join(HABITS_DIR, habit)
+        stats = get_habit_status(habit_path)
+        tracker_rows = parse_tracker_rows(os.path.join(habit_path, "tracker.md"))
+        tracker_by_date = {row["date"]: row for row in tracker_rows}
+        momentum_by_date = {}
+        running_momentum = 0
+
+        for tracker_row in tracker_rows:
+            status = tracker_row["status"]
+            if "✅" in status:
+                running_momentum = min(running_momentum + 1, 7)
+            elif "⏸️" in status:
+                running_momentum = 0
+            else:
+                running_momentum = 0
+
+            momentum_by_date[tracker_row["date"]] = running_momentum
+
         habit_name = habit.replace("-", " ").title()
         emoji = HABIT_EMOJIS.get(habit, "📌")
         rows.append(
@@ -132,646 +155,45 @@ def build_habit_rows(habits):
                 "slug": habit,
                 "streak": stats["streak"],
                 "last_date": stats["last_date"],
+                "last_date_display": format_display_date(stats["last_date"]),
                 "status": stats["status"],
+                "week": [
+                    {
+                        "date": day.isoformat(),
+                        "label": day.strftime("%a"),
+                        "status": tracker_by_date.get(day, {}).get("status", ""),
+                        "momentum": momentum_by_date.get(day, 0),
+                    }
+                    for day in week_dates
+                ],
             }
         )
 
     return rows
 
 
-def generate_dashboard_html(system_streak, last_sync, habit_rows):
-    streak_label = f"{system_streak} Days"
-    if system_streak == 1:
-        streak_label = "1 Day"
-
-    today_str = datetime.date.today().isoformat()
-    completed_today = sum(1 for row in habit_rows if row["last_date"] == today_str and "✅" in row["status"])
-    touched_today = sum(1 for row in habit_rows if row["last_date"] == today_str)
-    top_streak = max((row["streak"] for row in habit_rows), default=0)
-    recent_wins = [row for row in habit_rows if row["last_date"] == today_str and "✅" in row["status"]]
-    habit_cards = []
-    table_rows = []
-    heatmap_cells = []
-
-    for row in habit_rows:
-        streak_display = f"🔥 {row['streak']}" if row["streak"] > 3 else str(row["streak"])
-        status_class = "status-done" if "✅" in row["status"] else "status-paused" if "⏸️" in row["status"] else "status-missed" if "❌" in row["status"] else "status-new"
-        safe_name = html.escape(row["display_name"])
-        safe_last_date = html.escape(row["last_date"])
-        safe_status = html.escape(row["status"])
-        activity_note = "Completed today" if row["last_date"] == today_str and "✅" in row["status"] else "Updated today" if row["last_date"] == today_str else "No update today"
-        activity_class = "habit-note-good" if activity_note == "Completed today" else "habit-note-neutral"
-
-        heat_level = "heat-0"
-        if "✅" in row["status"]:
-            if row["streak"] >= 4:
-                heat_level = "heat-4"
-            elif row["streak"] == 3:
-                heat_level = "heat-3"
-            elif row["streak"] == 2:
-                heat_level = "heat-2"
-            else:
-                heat_level = "heat-1"
-
-        habit_cards.append(
-            f"""
-            <article class="habit-card">
-              <div class="habit-card-topline">
-                <span class="habit-kicker">{safe_last_date}</span>
-                <span class="status-pill {status_class}">{safe_status}</span>
-              </div>
-              <h2>{safe_name}</h2>
-              <p class="habit-note {activity_class}">{html.escape(activity_note)}</p>
-              <dl>
-                <div>
-                  <dt>Streak</dt>
-                  <dd>{html.escape(streak_display)}</dd>
-                </div>
-                <div>
-                  <dt>Last Logged</dt>
-                  <dd>{safe_last_date}</dd>
-                </div>
-              </dl>
-            </article>
-            """
-        )
-
-        table_rows.append(
-            f"""
-            <tr>
-              <td>{safe_name}</td>
-              <td>{html.escape(streak_display)}</td>
-              <td>{safe_last_date}</td>
-              <td><span class="status-pill {status_class}">{safe_status}</span></td>
-            </tr>
-            """
-        )
-
-        heatmap_cells.append(
-            f"""
-            <div class="heat-cell-wrap">
-              <div class="heat-cell {heat_level}"></div>
-              <span>{safe_name}</span>
-            </div>
-            """
-        )
-
-    wins_markup = (
-        "<ul class=\"wins-list\">"
-        + "".join(
-            f"<li><strong>{html.escape(row['display_name'])}</strong><span class=\"status-pill status-done\">✅ Today</span></li>"
-            for row in recent_wins
-        )
-        + "</ul>"
-        if recent_wins
-        else "<p class=\"wins-empty\">No completed habits logged today yet. The next update can change the shape of the board fast.</p>"
-    )
-
-    return f"""<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="dashboard-last-sync" content="{html.escape(last_sync)}" />
-    <title>Life Dashboard</title>
-    <style>
-      :root {{
-        --bg: #f5f7fb;
-        --bg-2: #eef2f7;
-        --panel: rgba(255, 255, 255, 0.78);
-        --panel-strong: rgba(255, 255, 255, 0.92);
-        --ink: #111827;
-        --muted: #667085;
-        --muted-2: #98a2b3;
-        --line: rgba(17, 24, 39, 0.08);
-        --accent: #5b7cfa;
-        --done: #027a48;
-        --paused: #b54708;
-        --missed: #b42318;
-        --new: #475467;
-        --heat-0: #e5e7eb;
-        --heat-1: #c7d2fe;
-        --heat-2: #a5b4fc;
-        --heat-3: #818cf8;
-        --heat-4: #4f46e5;
-        --shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
-        --radius-xl: 28px;
-        --radius-lg: 22px;
-        --radius-md: 16px;
-      }}
-
-      * {{
-        box-sizing: border-box;
-      }}
-
-      body {{
-        margin: 0;
-        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
-        color: var(--ink);
-        background:
-          radial-gradient(circle at top left, rgba(91, 124, 250, 0.16), transparent 20%),
-          radial-gradient(circle at top right, rgba(15, 23, 42, 0.06), transparent 24%),
-          linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
-      }}
-
-      .shell {{
-        max-width: 1280px;
-        margin: 0 auto;
-        padding: 28px 20px 56px;
-      }}
-
-      .topbar {{
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 20px;
-        margin-bottom: 20px;
-      }}
-
-      .brand {{
-        display: flex;
-        align-items: center;
-        gap: 12px;
-      }}
-
-      .brand-mark {{
-        width: 12px;
-        height: 12px;
-        border-radius: 999px;
-        background: linear-gradient(135deg, var(--accent) 0%, #7dd3fc 100%);
-        box-shadow: 0 0 0 8px rgba(91, 124, 250, 0.08);
-      }}
-
-      .brand-copy {{
-        display: flex;
-        flex-direction: column;
-        gap: 3px;
-      }}
-
-      .brand-copy strong {{
-        font-size: 0.9rem;
-        letter-spacing: -0.01em;
-      }}
-
-      .brand-copy span,
-      .sync-meta {{
-        color: var(--muted);
-        font-size: 0.9rem;
-      }}
-
-      .hero {{
-        background: var(--panel-strong);
-        border: 1px solid var(--line);
-        border-radius: var(--radius-xl);
-        box-shadow: var(--shadow);
-        padding: 28px;
-        backdrop-filter: blur(18px);
-      }}
-
-      .eyebrow {{
-        margin: 0 0 8px;
-        color: var(--accent);
-        font-size: 0.78rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
-      }}
-
-      h1 {{
-        margin: 0;
-        max-width: 12ch;
-        font-size: clamp(2.2rem, 6vw, 4.2rem);
-        line-height: 0.98;
-        letter-spacing: -0.04em;
-      }}
-
-      .hero-copy {{
-        display: flex;
-        justify-content: space-between;
-        gap: 24px;
-        margin-top: 18px;
-      }}
-
-      .hero-copy p {{
-        margin: 0;
-        max-width: 62ch;
-        color: var(--muted);
-        font-size: 1rem;
-        line-height: 1.6;
-      }}
-
-      .hero-grid {{
-        display: grid;
-        grid-template-columns: 1.4fr 1fr;
-        gap: 18px;
-        margin-top: 28px;
-      }}
-
-      .summary-strip {{
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 14px;
-      }}
-
-      .metric-panel,
-      .streak-panel,
-      .wins-panel,
-      .table-wrap,
-      .habit-card,
-      .heatmap-panel {{
-        background: var(--panel);
-        border: 1px solid var(--line);
-        border-radius: var(--radius-lg);
-        backdrop-filter: blur(16px);
-      }}
-
-      .metric-panel,
-      .streak-panel,
-      .wins-panel,
-      .heatmap-panel {{
-        padding: 20px;
-      }}
-
-      .metric-label,
-      .streak-panel dt {{
-        color: var(--muted-2);
-        font-size: 0.78rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
-      }}
-
-      .metric-value,
-      .streak-panel dd {{
-        margin: 10px 0 0;
-        font-size: clamp(2rem, 4vw, 2.6rem);
-        font-weight: 700;
-        letter-spacing: -0.04em;
-      }}
-
-      .metric-subtle,
-      .meta {{
-        margin-top: 8px;
-        color: var(--muted);
-        font-size: 0.95rem;
-      }}
-
-      .section-title {{
-        margin: 30px 0 14px;
-        font-size: 0.8rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
-        color: var(--muted-2);
-      }}
-
-      .content-grid {{
-        display: grid;
-        grid-template-columns: 1.15fr 0.85fr;
-        gap: 18px;
-        margin-top: 22px;
-      }}
-
-      .habit-grid {{
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 14px;
-      }}
-
-      .habit-card {{
-        padding: 20px;
-      }}
-
-      .habit-card-topline {{
-        display: flex;
-        justify-content: space-between;
-        gap: 12px;
-        align-items: center;
-        margin-bottom: 14px;
-      }}
-
-      .habit-kicker {{
-        color: var(--muted-2);
-        font-size: 0.8rem;
-        font-weight: 600;
-        letter-spacing: 0.02em;
-      }}
-
-      .habit-card h2 {{
-        margin: 0;
-        font-size: 1.1rem;
-        letter-spacing: -0.02em;
-      }}
-
-      .habit-note {{
-        margin: 8px 0 0;
-        font-size: 0.95rem;
-      }}
-
-      .habit-note-good {{
-        color: var(--done);
-      }}
-
-      .habit-note-neutral {{
-        color: var(--muted);
-      }}
-
-      .habit-card dl {{
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 14px;
-        margin: 18px 0 0;
-      }}
-
-      .habit-card dt {{
-        color: var(--muted-2);
-        font-size: 0.82rem;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-      }}
-
-      .habit-card dd {{
-        margin: 6px 0 0;
-        font-size: 1.05rem;
-        font-weight: 600;
-      }}
-
-      .wins-panel h2,
-      .heatmap-panel h2 {{
-        margin: 0;
-        font-size: 0.95rem;
-        letter-spacing: -0.02em;
-      }}
-
-      .wins-list {{
-        margin: 18px 0 0;
-        padding: 0;
-        list-style: none;
-        display: grid;
-        gap: 12px;
-      }}
-
-      .wins-list li {{
-        display: flex;
-        justify-content: space-between;
-        gap: 12px;
-        align-items: center;
-        padding: 12px 14px;
-        border: 1px solid var(--line);
-        border-radius: var(--radius-md);
-        background: rgba(255, 255, 255, 0.5);
-      }}
-
-      .wins-list strong {{
-        font-size: 0.95rem;
-      }}
-
-      .wins-empty,
-      .heatmap-panel p {{
-        margin-top: 18px;
-        color: var(--muted);
-        font-size: 0.95rem;
-        line-height: 1.5;
-      }}
-
-      .heatmap-grid {{
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 12px;
-        margin-top: 18px;
-      }}
-
-      .heat-cell-wrap {{
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }}
-
-      .heat-cell {{
-        width: 16px;
-        height: 16px;
-        border-radius: 5px;
-      }}
-
-      .heat-0 {{ background: var(--heat-0); }}
-      .heat-1 {{ background: var(--heat-1); }}
-      .heat-2 {{ background: var(--heat-2); }}
-      .heat-3 {{ background: var(--heat-3); }}
-      .heat-4 {{ background: var(--heat-4); }}
-
-      .heat-cell-wrap span {{
-        font-size: 0.93rem;
-      }}
-
-      .table-wrap {{
-        overflow: hidden;
-      }}
-
-      table {{
-        width: 100%;
-        border-collapse: collapse;
-      }}
-
-      th, td {{
-        text-align: left;
-        padding: 14px 16px;
-        border-bottom: 1px solid var(--line);
-      }}
-
-      th {{
-        font-size: 0.76rem;
-        color: var(--muted-2);
-        text-transform: uppercase;
-        letter-spacing: 0.12em;
-        background: rgba(248, 250, 252, 0.9);
-      }}
-
-      tr:last-child td {{
-        border-bottom: none;
-      }}
-
-      .status-pill {{
-        display: inline-flex;
-        align-items: center;
-        border-radius: 999px;
-        padding: 6px 10px;
-        font-size: 0.82rem;
-        font-weight: 700;
-        background: #eef2ff;
-      }}
-
-      .status-done {{
-        color: var(--done);
-        background: rgba(2, 122, 72, 0.12);
-      }}
-
-      .status-paused {{
-        color: var(--paused);
-        background: rgba(181, 71, 8, 0.12);
-      }}
-
-      .status-missed {{
-        color: var(--missed);
-        background: rgba(180, 35, 24, 0.12);
-      }}
-
-      .status-new {{
-        color: var(--new);
-        background: rgba(71, 84, 103, 0.12);
-      }}
-
-      @media (max-width: 980px) {{
-        .hero-copy,
-        .hero-grid,
-        .content-grid,
-        .summary-strip,
-        .habit-grid,
-        .heatmap-grid {{
-          display: grid;
-          grid-template-columns: 1fr;
-        }}
-      }}
-
-      @media (max-width: 720px) {{
-        .table-wrap {{
-          overflow-x: auto;
-        }}
-
-        .topbar {{
-          flex-direction: column;
-          align-items: flex-start;
-        }}
-      }}
-    </style>
-  </head>
-  <body>
-    <main class="shell">
-      <div class="topbar">
-        <div class="brand">
-          <div class="brand-mark"></div>
-          <div class="brand-copy">
-            <strong>Life Dashboard</strong>
-            <span>Personal operating system</span>
-          </div>
-        </div>
-        <div class="sync-meta">Last sync: {html.escape(last_sync)}</div>
-      </div>
-
-      <section class="hero">
-        <p class="eyebrow">Daily Overview</p>
-        <h1>Today is either on track or it isn't.</h1>
-        <div class="hero-copy">
-          <p>
-            A calm, fast read on where the day stands. This dashboard is generated from your habit trackers,
-            so the board stays aligned with the markdown source of truth without extra upkeep.
-          </p>
-        </div>
-
-        <div class="hero-grid">
-          <div class="summary-strip">
-            <section class="metric-panel">
-              <div class="metric-label">Done Today</div>
-              <div class="metric-value">{completed_today}</div>
-              <div class="metric-subtle">{touched_today} habits touched today</div>
-            </section>
-            <section class="metric-panel">
-              <div class="metric-label">Best Streak</div>
-              <div class="metric-value">{top_streak}</div>
-              <div class="metric-subtle">Current strongest line</div>
-            </section>
-            <section class="streak-panel">
-              <dl>
-                <dt>System Consistency</dt>
-                <dd>{html.escape(streak_label)}</dd>
-              </dl>
-              <div class="meta">Momentum across the board</div>
-            </section>
-          </div>
-
-          <section class="wins-panel">
-            <h2>Recent Wins</h2>
-            {wins_markup}
-          </section>
-        </div>
-      </section>
-
-      <section class="content-grid">
-        <div>
-          <h2 class="section-title">Habit Cards</h2>
-          <section class="habit-grid">
-            {''.join(habit_cards)}
-          </section>
-        </div>
-        <div>
-          <h2 class="section-title">Consistency Map</h2>
-          <section class="heatmap-panel">
-            <h2>Streak Intensity</h2>
-            <p>
-              A compact contribution-style view of which habits are actually carrying momentum right now.
-            </p>
-            <div class="heatmap-grid">
-              {''.join(heatmap_cells)}
-            </div>
-          </section>
-        </div>
-      </section>
-
-      <h2 class="section-title">Tracker Table</h2>
-      <section class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Habit</th>
-              <th>Current Streak</th>
-              <th>Last Logged</th>
-              <th>Latest Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {''.join(table_rows)}
-          </tbody>
-        </table>
-      </section>
-    </main>
-    <script>
-      const currentLastSync = document
-        .querySelector('meta[name="dashboard-last-sync"]')
-        ?.getAttribute('content');
-
-      async function checkForDashboardUpdate() {{
-        try {{
-          const response = await fetch(`${{window.location.pathname}}?ts=${{Date.now()}}`, {{
-            cache: 'no-store',
-          }});
-          const text = await response.text();
-          const match = text.match(/<meta name="dashboard-last-sync" content="([^"]+)"/);
-          const latestLastSync = match?.[1];
-
-          if (latestLastSync && currentLastSync && latestLastSync !== currentLastSync) {{
-            window.location.reload();
-          }}
-        }} catch (_error) {{
-          // Ignore polling failures when the page is opened from the filesystem.
-        }}
-      }}
-
-      window.setInterval(checkForDashboardUpdate, 15000);
-    </script>
-  </body>
-</html>
-"""
+def format_display_date(date_str):
+    if date_str in {"None", "N/A"}:
+        return date_str
+
+    try:
+        date_obj = datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
+    except ValueError:
+        return date_str
+
+    return f"{date_obj.month}-{date_obj.day}"
 
 
 def generate_dashboard():
     if not os.path.exists(HABITS_DIR):
         os.makedirs(HABITS_DIR)
 
-    habits = [d for d in os.listdir(HABITS_DIR) if os.path.isdir(os.path.join(HABITS_DIR, d))]
+    habits = [name for name in os.listdir(HABITS_DIR) if os.path.isdir(os.path.join(HABITS_DIR, name))]
     last_sync = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     system_streak = calculate_system_streak(habits)
     habit_rows = build_habit_rows(habits)
 
-    streak_banner = f"## ⚡ System Consistency: {system_streak} Days"
+    streak_banner = f"## ⚡ Consistency: {system_streak} Days"
     if system_streak > 7:
         streak_banner += " (On Fire! 🔥)"
 
@@ -785,17 +207,15 @@ def generate_dashboard():
 
     for row in habit_rows:
         streak_display = f"🔥 {row['streak']}" if row["streak"] > 3 else str(row["streak"])
-        row = (
-            f"| **{row['display_name']}** | {streak_display} | "
-            f"{row['last_date']} | {row['status']} |"
+        dashboard_content.append(
+            f"| **{row['display_name']}** | {streak_display} | {row['last_date_display']} | {row['status']} |"
         )
-        dashboard_content.append(row)
 
-    with open(DASHBOARD_FILE, "w", encoding="utf-8") as f:
-        f.write("\n".join(dashboard_content))
+    with open(DASHBOARD_FILE, "w", encoding="utf-8") as file_obj:
+        file_obj.write("\n".join(dashboard_content))
 
-    with open(DASHBOARD_HTML_FILE, "w", encoding="utf-8") as f:
-        f.write(generate_dashboard_html(system_streak, last_sync, habit_rows))
+    with open(DASHBOARD_HTML_FILE, "w", encoding="utf-8") as file_obj:
+        file_obj.write(render_dashboard_html(system_streak, last_sync, habit_rows))
 
     print("Dashboard updated successfully.")
 
