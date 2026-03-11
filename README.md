@@ -14,23 +14,34 @@ A habit tracking system powered by an AI accountability partner. Works out of th
 
 1. **Open this project** in Cursor, Claude Code, or Codex.
 2. Your coach reads the dashboard, asks about your day, and logs your habits.
-3. Streaks, statuses, and patterns are tracked automatically.
+3. After habit updates, the coach runs `python3 tools/sync_dashboard.py` to regenerate the dashboard views.
 
 ## Project Structure
 
 ```
 habits/
 ├── dashboard.md              # Auto-generated overview of all habits
-├── daily-journal/            # Example habit: daily journaling
+├── dashboard.html            # Auto-generated visual dashboard
+├── journal/                  # Daily journal habit
 │   ├── context.md            # Rules and interaction protocols
 │   ├── tracker.md            # Date/status log
 │   └── entries/              # Individual journal entries (by month)
-└── morning-run/              # Example habit: morning exercise
-    ├── context.md            # Rules and interaction protocols
-    ├── tracker.md            # Date/status log
-    └── journal.md            # Freeform notes and reflections
+├── leetcode/                 # Coding interview practice
+│   ├── context.md
+│   └── tracker.md
+├── job-search/               # Job-search momentum habit
+│   ├── context.md
+│   ├── tracker.md
+│   └── journal.md
+└── stretch-rehab/            # Mobility and rehab work
+    ├── context.md
+    ├── tracker.md
+    └── journal.md
 tools/
-└── sync_dashboard.py         # Syncs tracker data → dashboard.md
+├── dashboard_renderer.py     # Renders the HTML dashboard
+├── quotes_library.py         # Daily quote rotation
+├── serve_dashboard.py        # Local preview server
+└── sync_dashboard.py         # Syncs tracker data → dashboard files
 CLAUDE.md                     # Agent rules for Claude Code
 AGENTS.md                     # Agent rules for Codex
 .cursor/rules/context.md      # Agent rules for Cursor
@@ -58,4 +69,5 @@ AGENTS.md                     # Agent rules for Codex
 
 - **Agent persona:** Edit `CLAUDE.md`, `AGENTS.md`, or `.cursor/rules/context.md` (depending on your tool) to change the coach's tone, philosophy, or interaction style.
 - **Habit rules:** Each habit's `context.md` controls how the agent interacts with that specific habit (frequency, backup protocols, coaching output, etc.).
-- **Dashboard sync:** `tools/sync_dashboard.py` runs automatically after updates. No configuration needed.
+- **Dashboard sync:** Run `python3 tools/sync_dashboard.py` after tracker changes, or let your coaching agent do it for you.
+- **Dashboard preview:** Run `python3 tools/serve_dashboard.py` and open `http://localhost:8000/habits/dashboard.html`.

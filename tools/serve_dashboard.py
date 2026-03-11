@@ -20,8 +20,12 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         super().end_headers()
 
 
+class ReusableTCPServer(socketserver.TCPServer):
+    allow_reuse_address = True
+
+
 def main():
-    with socketserver.TCPServer(("", PORT), NoCacheHandler) as httpd:
+    with ReusableTCPServer(("", PORT), NoCacheHandler) as httpd:
         print(f"Serving dashboard at http://localhost:{PORT}/habits/dashboard.html")
         print("Press Ctrl+C to stop.")
         httpd.serve_forever()

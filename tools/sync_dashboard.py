@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
 
 import datetime
-import os
+from pathlib import Path
 
 try:
     from dashboard_renderer import render_dashboard_html
+    from quotes_library import get_daily_quote
 except ModuleNotFoundError:
     from tools.dashboard_renderer import render_dashboard_html
+    from tools.quotes_library import get_daily_quote
 
 # Configuration
-HABITS_DIR = "habits"
-DASHBOARD_FILE = os.path.join(HABITS_DIR, "dashboard.md")
-DASHBOARD_HTML_FILE = os.path.join(HABITS_DIR, "dashboard.html")
+ROOT_DIR = Path(__file__).resolve().parent.parent
+HABITS_DIR = ROOT_DIR / "habits"
+DASHBOARD_FILE = HABITS_DIR / "dashboard.md"
+DASHBOARD_HTML_FILE = HABITS_DIR / "dashboard.html"
 
 HABIT_EMOJIS = {
     "journal": "📝",
@@ -22,11 +25,12 @@ HABIT_EMOJIS = {
 
 
 def parse_tracker_rows(tracker_path):
-    if not os.path.exists(tracker_path):
+    tracker_path = Path(tracker_path)
+    if not tracker_path.exists():
         return []
 
     rows = []
-    with open(tracker_path, "r", encoding="utf-8") as file_obj:
+    with tracker_path.open("r", encoding="utf-8") as file_obj:
         for line in file_obj:
             stripped = line.strip()
             if not stripped.startswith("|"):
@@ -65,9 +69,9 @@ def parse_tracker_rows(tracker_path):
 
 
 def get_habit_status(habit_path):
-    tracker_path = os.path.join(habit_path, "tracker.md")
+    tracker_path = Path(habit_path) / "tracker.md"
 
-    if not os.path.exists(tracker_path):
+    if not tracker_path.exists():
         return {"streak": 0, "last_date": "N/A", "status": "N/A"}
 
     data_rows = parse_tracker_rows(tracker_path)
@@ -96,7 +100,7 @@ def calculate_system_streak(habits):
     all_dates = set()
 
     for habit in habits:
-        tracker_path = os.path.join(HABITS_DIR, habit, "tracker.md")
+        tracker_path = HABITS_DIR / habit / "tracker.md"
         for row in parse_tracker_rows(tracker_path):
             all_dates.add(row["date"])
 
@@ -128,9 +132,9 @@ def build_habit_rows(habits):
     week_dates = [today - datetime.timedelta(days=offset) for offset in range(6, -1, -1)]
 
     for habit in sorted(habits):
-        habit_path = os.path.join(HABITS_DIR, habit)
+        habit_path = HABITS_DIR / habit
         stats = get_habit_status(habit_path)
-        tracker_rows = parse_tracker_rows(os.path.join(habit_path, "tracker.md"))
+        tracker_rows = parse_tracker_rows(habit_path / "tracker.md")
         tracker_by_date = {row["date"]: row for row in tracker_rows}
         momentum_by_date = {}
         running_momentum = 0
@@ -140,7 +144,7 @@ def build_habit_rows(habits):
             if "✅" in status:
                 running_momentum = min(running_momentum + 1, 7)
             elif "⏸️" in status:
-                running_momentum = 0
+                running_momentum = running_momentum
             else:
                 running_momentum = 0
 
@@ -185,13 +189,14 @@ def format_display_date(date_str):
 
 
 def generate_dashboard():
-    if not os.path.exists(HABITS_DIR):
-        os.makedirs(HABITS_DIR)
+    if not HABITS_DIR.exists():
+        HABITS_DIR.mkdir(parents=True)
 
-    habits = [name for name in os.listdir(HABITS_DIR) if os.path.isdir(os.path.join(HABITS_DIR, name))]
+    habits = [path.name for path in HABITS_DIR.iterdir() if path.is_dir()]
     last_sync = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     system_streak = calculate_system_streak(habits)
     habit_rows = build_habit_rows(habits)
+    daily_quote = get_daily_quote()
 
     streak_banner = f"## ⚡ Consistency: {system_streak} Days"
     if system_streak > 7:
@@ -211,11 +216,11 @@ def generate_dashboard():
             f"| **{row['display_name']}** | {streak_display} | {row['last_date_display']} | {row['status']} |"
         )
 
-    with open(DASHBOARD_FILE, "w", encoding="utf-8") as file_obj:
+    with DASHBOARD_FILE.open("w", encoding="utf-8") as file_obj:
         file_obj.write("\n".join(dashboard_content))
 
-    with open(DASHBOARD_HTML_FILE, "w", encoding="utf-8") as file_obj:
-        file_obj.write(render_dashboard_html(system_streak, last_sync, habit_rows))
+    with DASHBOARD_HTML_FILE.open("w", encoding="utf-8") as file_obj:
+        file_obj.write(render_dashboard_html(system_streak, last_sync, habit_rows, daily_quote))
 
     print("Dashboard updated successfully.")
 

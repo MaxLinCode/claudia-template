@@ -2,7 +2,7 @@ import datetime
 import html
 
 
-def render_dashboard_html(system_streak, last_sync, habit_rows):
+def render_dashboard_html(system_streak, last_sync, habit_rows, daily_quote):
     streak_value = str(system_streak)
     today_str = datetime.date.today().isoformat()
     completed_today = sum(1 for row in habit_rows if row["last_date"] == today_str and "✅" in row["status"])
@@ -111,6 +111,8 @@ def render_dashboard_html(system_streak, last_sync, habit_rows):
         f'<span title="{html.escape(day["date"])}">{html.escape(day["label"][0])}</span>'
         for day in week_header_days
     )
+    quote_text = html.escape(daily_quote["text"])
+    quote_author = html.escape(daily_quote["author"])
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -257,6 +259,10 @@ def render_dashboard_html(system_streak, last_sync, habit_rows):
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.16em;
+      }}
+
+      .quote-mark {{
+        color: var(--ink);
       }}
 
       .daily-quote {{
@@ -631,8 +637,8 @@ def render_dashboard_html(system_streak, last_sync, habit_rows):
         </div>
         <div class="daily-quote" id="daily-quote">
           <div class="quote-kicker">Daily Focus</div>
-          <p id="daily-quote-text">Loading today's quote...</p>
-          <cite id="daily-quote-author"></cite>
+          <p><span class="quote-mark">"</span>{quote_text}<span class="quote-mark">"</span></p>
+          <cite>- {quote_author}</cite>
         </div>
 
         <div class="hero-grid">
@@ -707,66 +713,6 @@ def render_dashboard_html(system_streak, last_sync, habit_rows):
       const currentLastSync = document
         .querySelector('meta[name="dashboard-last-sync"]')
         ?.getAttribute('content');
-      const quoteTextEl = document.getElementById('daily-quote-text');
-      const quoteAuthorEl = document.getElementById('daily-quote-author');
-
-      async function loadDailyQuote() {{
-        const today = new Date().toISOString().slice(0, 10);
-        const storageKey = `dashboard-quote-${{today}}`;
-        const cached = window.localStorage.getItem(storageKey);
-
-        if (cached) {{
-          try {{
-            const parsed = JSON.parse(cached);
-            quoteTextEl.textContent = parsed.text;
-            quoteAuthorEl.textContent = parsed.author;
-            return;
-          }} catch (_error) {{
-            window.localStorage.removeItem(storageKey);
-          }}
-        }}
-
-        const sources = [
-          async () => {{
-            const response = await fetch('https://zenquotes.io/api/today', {{ cache: 'no-store' }});
-            if (!response.ok) {{
-              throw new Error('zenquotes failed');
-            }}
-            const data = await response.json();
-            if (!Array.isArray(data) || !data[0]?.q || !data[0]?.a) {{
-              throw new Error('zenquotes invalid');
-            }}
-            return {{ text: data[0].q, author: `- ${{data[0].a}}` }};
-          }},
-          async () => {{
-            const response = await fetch('https://api.quotable.io/random?maxLength=120', {{ cache: 'no-store' }});
-            if (!response.ok) {{
-              throw new Error('quotable failed');
-            }}
-            const data = await response.json();
-            if (!data?.content || !data?.author) {{
-              throw new Error('quotable invalid');
-            }}
-            return {{ text: data.content, author: `- ${{data.author}}` }};
-          }},
-        ];
-
-        for (const source of sources) {{
-          try {{
-            const quote = await source();
-            quoteTextEl.textContent = quote.text;
-            quoteAuthorEl.textContent = quote.author;
-            window.localStorage.setItem(storageKey, JSON.stringify(quote));
-            return;
-          }} catch (_error) {{
-            // Try the next source.
-          }}
-        }}
-
-        quoteTextEl.textContent = 'Do the best you can until you know better. Then when you know better, do better.';
-        quoteAuthorEl.textContent = '- Maya Angelou';
-      }}
-
       async function checkForDashboardUpdate() {{
         try {{
           const response = await fetch(`${{window.location.pathname}}?ts=${{Date.now()}}`, {{
@@ -784,7 +730,6 @@ def render_dashboard_html(system_streak, last_sync, habit_rows):
         }}
       }}
 
-      loadDailyQuote();
       window.setInterval(checkForDashboardUpdate, 15000);
     </script>
   </body>
