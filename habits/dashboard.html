@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="dashboard-last-sync" content="2026-03-10 22:14:33" />
+    <meta name="dashboard-last-sync" content="2026-03-10 23:03:47" />
     <title>Life Dashboard</title>
     <style>
       :root {
@@ -29,7 +29,13 @@
         --heat-6: #567adc;
         --heat-7: #3d5fc2;
         --heat-paused: #ece7d8;
-        --heat-missed: #f2dddd;
+        --heat-missed-1: #f9e3e1;
+        --heat-missed-2: #f3c8c3;
+        --heat-missed-3: #ecaca4;
+        --heat-missed-4: #e28981;
+        --heat-missed-5: #d8655d;
+        --heat-missed-6: #ca443f;
+        --heat-missed-7: #a92b26;
         --shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
         --radius-xl: 28px;
         --radius-lg: 22px;
@@ -405,7 +411,13 @@
       .heat-6 { background: var(--heat-6); }
       .heat-7 { background: var(--heat-7); }
       .heat-paused { background: var(--heat-paused); }
-      .heat-missed { background: var(--heat-missed); }
+      .heat-missed-1 { background: var(--heat-missed-1); }
+      .heat-missed-2 { background: var(--heat-missed-2); }
+      .heat-missed-3 { background: var(--heat-missed-3); }
+      .heat-missed-4 { background: var(--heat-missed-4); }
+      .heat-missed-5 { background: var(--heat-missed-5); }
+      .heat-missed-6 { background: var(--heat-missed-6); }
+      .heat-missed-7 { background: var(--heat-missed-7); }
 
       .table-wrap {
         overflow: hidden;
@@ -507,7 +519,7 @@
             <span>Personal operating system</span>
           </div>
         </div>
-        <div class="sync-meta">Last sync: 2026-03-10 22:14:33</div>
+        <div class="sync-meta">Last sync: 2026-03-10 23:03:47</div>
       </div>
 
       <section class="hero">
@@ -529,8 +541,8 @@
           <div class="summary-strip">
             <section class="metric-panel">
               <div class="metric-label">Done Today</div>
-              <div class="metric-value">2</div>
-              <div class="metric-subtle">4 habits touched today</div>
+              <div class="metric-value">4</div>
+              <div class="metric-subtle">5 habits touched today</div>
             </section>
             <section class="metric-panel">
               <div class="metric-label">Best Streak</div>
@@ -546,7 +558,7 @@
 
           <section class="wins-panel">
             <h2>Recent Wins</h2>
-            <ul class="wins-list"><li><strong>📝 Journal</strong><span class="status-pill status-done">✅ Today</span></li><li><strong>💻 Leetcode</strong><span class="status-pill status-done">✅ Today</span></li></ul>
+            <ul class="wins-list"><li><strong>💼 Job Search</strong><span class="status-pill status-done">✅ Today</span></li><li><strong>📝 Journal</strong><span class="status-pill status-done">✅ Today</span></li><li><strong>💻 Leetcode</strong><span class="status-pill status-done">✅ Today</span></li><li><strong>💊 Vitamins</strong><span class="status-pill status-done">✅ Today</span></li></ul>
           </section>
         </div>
       </section>
@@ -559,14 +571,14 @@
             <article class="habit-card">
               <div class="habit-card-topline">
                 <span class="habit-kicker">3-10</span>
-                <span class="status-pill status-missed">❌</span>
+                <span class="status-pill status-done">✅</span>
               </div>
               <h2>💼 Job Search</h2>
-              <p class="habit-note habit-note-neutral">Updated today</p>
+              <p class="habit-note habit-note-good">Completed today</p>
               <dl>
                 <div>
                   <dt>Streak</dt>
-                  <dd>0</dd>
+                  <dd>1</dd>
                 </div>
                 <div>
                   <dt>Last Logged</dt>
@@ -632,6 +644,25 @@
               </dl>
             </article>
             
+            <article class="habit-card">
+              <div class="habit-card-topline">
+                <span class="habit-kicker">3-10</span>
+                <span class="status-pill status-done">✅</span>
+              </div>
+              <h2>💊 Vitamins</h2>
+              <p class="habit-note habit-note-good">Completed today</p>
+              <dl>
+                <div>
+                  <dt>Streak</dt>
+                  <dd>1</dd>
+                </div>
+                <div>
+                  <dt>Last Logged</dt>
+                  <dd>3-10</dd>
+                </div>
+              </dl>
+            </article>
+            
           </section>
         </div>
         <div>
@@ -675,7 +706,7 @@
                 </div>
                 
                 <div class="week-cell-group">
-                  <div class="heat-cell heat-missed" title="Tue 2026-03-10: ❌"></div>
+                  <div class="heat-cell heat-1" title="Tue 2026-03-10: ✅"></div>
                 </div>
                 
             </div>
@@ -774,7 +805,40 @@
                 </div>
                 
                 <div class="week-cell-group">
-                  <div class="heat-cell heat-missed" title="Tue 2026-03-10: ❌"></div>
+                  <div class="heat-cell heat-missed-1" title="Tue 2026-03-10: ❌"></div>
+                </div>
+                
+            </div>
+            
+            <div class="weekly-row">
+              <span class="weekly-label">💊 Vitamins</span>
+              
+                <div class="week-cell-group">
+                  <div class="heat-cell heat-0" title="Wed 2026-03-04: No entry"></div>
+                </div>
+                
+                <div class="week-cell-group">
+                  <div class="heat-cell heat-0" title="Thu 2026-03-05: No entry"></div>
+                </div>
+                
+                <div class="week-cell-group">
+                  <div class="heat-cell heat-0" title="Fri 2026-03-06: No entry"></div>
+                </div>
+                
+                <div class="week-cell-group">
+                  <div class="heat-cell heat-0" title="Sat 2026-03-07: No entry"></div>
+                </div>
+                
+                <div class="week-cell-group">
+                  <div class="heat-cell heat-0" title="Sun 2026-03-08: No entry"></div>
+                </div>
+                
+                <div class="week-cell-group">
+                  <div class="heat-cell heat-0" title="Mon 2026-03-09: No entry"></div>
+                </div>
+                
+                <div class="week-cell-group">
+                  <div class="heat-cell heat-1" title="Tue 2026-03-10: ✅"></div>
                 </div>
                 
             </div>
@@ -799,9 +863,9 @@
             
             <tr>
               <td>💼 Job Search</td>
-              <td>0</td>
+              <td>1</td>
               <td>3-10</td>
-              <td><span class="status-pill status-missed">❌</span></td>
+              <td><span class="status-pill status-done">✅</span></td>
             </tr>
             
             <tr>
@@ -823,6 +887,13 @@
               <td>0</td>
               <td>3-10</td>
               <td><span class="status-pill status-missed">❌</span></td>
+            </tr>
+            
+            <tr>
+              <td>💊 Vitamins</td>
+              <td>1</td>
+              <td>3-10</td>
+              <td><span class="status-pill status-done">✅</span></td>
             </tr>
             
           </tbody>

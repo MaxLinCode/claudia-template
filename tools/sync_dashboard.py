@@ -21,6 +21,7 @@ HABIT_EMOJIS = {
     "stretch-rehab": "🧘",
     "leetcode": "💻",
     "job-search": "💼",
+    "vitamins": "💊",
 }
 
 
@@ -137,18 +138,24 @@ def build_habit_rows(habits):
         tracker_rows = parse_tracker_rows(habit_path / "tracker.md")
         tracker_by_date = {row["date"]: row for row in tracker_rows}
         momentum_by_date = {}
+        miss_momentum_by_date = {}
         running_momentum = 0
+        running_miss_momentum = 0
 
         for tracker_row in tracker_rows:
             status = tracker_row["status"]
             if "✅" in status:
                 running_momentum = min(running_momentum + 1, 7)
+                running_miss_momentum = 0
             elif "⏸️" in status:
                 running_momentum = running_momentum
+                running_miss_momentum = running_miss_momentum
             else:
                 running_momentum = 0
+                running_miss_momentum = min(running_miss_momentum + 1, 7)
 
             momentum_by_date[tracker_row["date"]] = running_momentum
+            miss_momentum_by_date[tracker_row["date"]] = running_miss_momentum
 
         habit_name = habit.replace("-", " ").title()
         emoji = HABIT_EMOJIS.get(habit, "📌")
@@ -167,6 +174,7 @@ def build_habit_rows(habits):
                         "label": day.strftime("%a"),
                         "status": tracker_by_date.get(day, {}).get("status", ""),
                         "momentum": momentum_by_date.get(day, 0),
+                        "miss_momentum": miss_momentum_by_date.get(day, 0),
                     }
                     for day in week_dates
                 ],

@@ -70,13 +70,14 @@ def render_dashboard_html(system_streak, last_sync, habit_rows, daily_quote):
         for day in row["week"]:
             day_status = day["status"]
             momentum = day["momentum"]
+            miss_momentum = day.get("miss_momentum", 0)
 
             if "✅" in day_status and momentum > 0:
                 week_class = f"heat-{momentum}"
             elif "⏸️" in day_status:
                 week_class = "heat-paused"
-            elif "❌" in day_status:
-                week_class = "heat-missed"
+            elif "❌" in day_status and miss_momentum > 0:
+                week_class = f"heat-missed-{miss_momentum}"
             else:
                 week_class = "heat-0"
 
@@ -145,7 +146,13 @@ def render_dashboard_html(system_streak, last_sync, habit_rows, daily_quote):
         --heat-6: #567adc;
         --heat-7: #3d5fc2;
         --heat-paused: #ece7d8;
-        --heat-missed: #f2dddd;
+        --heat-missed-1: #f9e3e1;
+        --heat-missed-2: #f3c8c3;
+        --heat-missed-3: #ecaca4;
+        --heat-missed-4: #e28981;
+        --heat-missed-5: #d8655d;
+        --heat-missed-6: #ca443f;
+        --heat-missed-7: #a92b26;
         --shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
         --radius-xl: 28px;
         --radius-lg: 22px;
@@ -521,7 +528,13 @@ def render_dashboard_html(system_streak, last_sync, habit_rows, daily_quote):
       .heat-6 {{ background: var(--heat-6); }}
       .heat-7 {{ background: var(--heat-7); }}
       .heat-paused {{ background: var(--heat-paused); }}
-      .heat-missed {{ background: var(--heat-missed); }}
+      .heat-missed-1 {{ background: var(--heat-missed-1); }}
+      .heat-missed-2 {{ background: var(--heat-missed-2); }}
+      .heat-missed-3 {{ background: var(--heat-missed-3); }}
+      .heat-missed-4 {{ background: var(--heat-missed-4); }}
+      .heat-missed-5 {{ background: var(--heat-missed-5); }}
+      .heat-missed-6 {{ background: var(--heat-missed-6); }}
+      .heat-missed-7 {{ background: var(--heat-missed-7); }}
 
       .table-wrap {{
         overflow: hidden;
