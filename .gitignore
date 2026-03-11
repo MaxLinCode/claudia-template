@@ -5,3 +5,5 @@ __pycache__/
 env/
 venv/
 .env
+habits/journal/entries/*
+!habits/journal/entries/.gitkeep
