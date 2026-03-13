@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 
 import datetime
+import sys
 from pathlib import Path
-
-try:
-    from dashboard_renderer import render_dashboard_html
-    from quotes_library import get_daily_quote
-except ModuleNotFoundError:
-    from tools.dashboard_renderer import render_dashboard_html
-    from tools.quotes_library import get_daily_quote
 
 # Configuration
 ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
+from tools.dashboard_renderer import render_dashboard_html
+from tools.quotes_library import get_daily_quote
+
 HABITS_DIR = ROOT_DIR / "habits"
 DASHBOARD_FILE = HABITS_DIR / "dashboard.md"
 DASHBOARD_HTML_FILE = HABITS_DIR / "dashboard.html"
@@ -69,13 +69,44 @@ def parse_tracker_rows(tracker_path):
     return rows
 
 
+def build_effective_tracker_rows(tracker_rows, today=None):
+    if not tracker_rows:
+        return []
+
+    if today is None:
+        today = datetime.date.today()
+
+    tracker_by_date = {row["date"]: row for row in tracker_rows}
+    effective_rows = []
+    current_date = tracker_rows[0]["date"]
+    final_date = today - datetime.timedelta(days=1)
+
+    while current_date <= final_date:
+        row = tracker_by_date.get(current_date)
+        if row is None:
+            row = {
+                "date": current_date,
+                "date_str": current_date.isoformat(),
+                "status": "❌",
+                "note": "Inferred miss",
+            }
+
+        effective_rows.append(row)
+        current_date += datetime.timedelta(days=1)
+
+    if tracker_rows[-1]["date"] == today:
+        effective_rows.append(tracker_rows[-1])
+
+    return effective_rows
+
+
 def get_habit_status(habit_path):
     tracker_path = Path(habit_path) / "tracker.md"
 
     if not tracker_path.exists():
         return {"streak": 0, "last_date": "N/A", "status": "N/A"}
 
-    data_rows = parse_tracker_rows(tracker_path)
+    data_rows = build_effective_tracker_rows(parse_tracker_rows(tracker_path))
     if not data_rows:
         return {"streak": 0, "last_date": "None", "status": "New"}
 
@@ -135,7 +166,7 @@ def build_habit_rows(habits):
     for habit in sorted(habits):
         habit_path = HABITS_DIR / habit
         stats = get_habit_status(habit_path)
-        tracker_rows = parse_tracker_rows(habit_path / "tracker.md")
+        tracker_rows = build_effective_tracker_rows(parse_tracker_rows(habit_path / "tracker.md"))
         tracker_by_date = {row["date"]: row for row in tracker_rows}
         momentum_by_date = {}
         miss_momentum_by_date = {}

@@ -4,6 +4,11 @@ import http.server
 import os
 import socketserver
 
+try:
+    from sync_dashboard import generate_dashboard
+except ModuleNotFoundError:
+    from tools.sync_dashboard import generate_dashboard
+
 
 PORT = 8000
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -12,6 +17,11 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=ROOT, **kwargs)
+
+    def do_GET(self):
+        if self.path in {"/habits/dashboard.html", "/habits/dashboard.md"}:
+            generate_dashboard()
+        super().do_GET()
 
     def end_headers(self):
         self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
@@ -25,6 +35,7 @@ class ReusableTCPServer(socketserver.TCPServer):
 
 
 def main():
+    generate_dashboard()
     with ReusableTCPServer(("", PORT), NoCacheHandler) as httpd:
         print(f"Serving dashboard at http://localhost:{PORT}/habits/dashboard.html")
         print("Press Ctrl+C to stop.")
